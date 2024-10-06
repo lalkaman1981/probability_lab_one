@@ -1,0 +1,272 @@
+---
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Probability and Statistics
+
+# Lab Assignment 1: Naive Bayes Classifier
+
+## Work breakdown
+
+-   *Name1 Surname1*:
+-   *Name2 Surname2*:
+-   *Name3 Surname3*:
+
+## Introduction
+
+During the first three weeks, you learned a couple of essential notions
+and theorems, and one of the most important among them is the **Bayes
+theorem**.
+
+**Naive Bayes Classifier** is a simple algorithm, which is based on
+**Bayes theorem** and used for solving classification problems.
+**Classification problem** is a problem in which an observation has to
+be classified in one of the $n$ classes based on its similarity with
+observations in each class.
+
+It is a **probabilistic classifier**, which means it predicts based on
+the probability of an observation belonging to each class. To compute
+it, this algorithm uses **Bayes' formula,** that you probably already
+came across in **Lesson 3:**
+$$\mathsf{P}(\mathrm{class}\mid \mathrm{observation})=\frac{\mathsf{P}(\mathrm{observation}\mid\mathrm{class})\mathsf{P}(\mathrm{class})}{\mathsf{P}(\mathrm{observation})}$$
+
+Under the strong **independence** assumption, one can calculate
+$\mathsf{P}(\mathrm{observation} \mid \mathrm{class})$ as
+$$\mathsf{P}(\mathrm{observation}) = \prod_{i=1}^{n} \mathsf{P}(\mathrm{feature}_i), \qquad \mathsf{P}(\mathrm{observation} \mid \mathrm{class}) = \prod_{i=1}^{n} \mathsf{P}(\mathrm{feature}_i \mid \mathrm{class}),$$
+where $n$ is the total number of features describing a given observation
+(*For example, if an observation is presented as a sentence, then each
+word can be a feature*). Thus,
+$\mathsf{P}(\mathrm{class}|\mathrm{observation})$ now can be calculated
+as
+
+$$\mathsf{P}(\mathrm{class} \mid \mathrm{\mathrm{observation}}) = \mathsf{P}(\mathrm{class})\times \prod_{i=1}^{n}\frac{\mathsf{P}(\mathrm{feature}_i\mid \mathrm{class})}{\mathsf{P}(\mathrm{feature}_i)}\tag{1}$$
+
+All the terms on the right-hand side can be estimated as corresponding
+relative frequencies using available data\
+
+**See [*this
+link*](https://www.javatpoint.com/machine-learning-naive-bayes-classifier)
+for more detailed explanations & examples :) Also you can watch [*this
+video*](https://youtu.be/O2L2Uv9pdDA?si=-ohkHVDuu3sLLGMq) for more
+examples!**
+
+## Data description
+
+There are 5 datasets uploaded on the cms (data.zip)
+
+To determine your variant, take your team number from the list of teams
+on cms and take *mod 5* - this is the number of your data set.
+
+-   **0 - authors** This data set consists of citations of three famous
+    writers: Edgar Alan Poe, Mary Wollstonecraft Shelley and HP
+    Lovecraft. The task with this data set is to classify a piece of
+    text with the author who was more likely to write it.
+
+-   **1 - discrimination** This data set consists of tweets that have
+    discriminatory (sexism or racism) messages or of tweets that are of
+    neutral mood. The task is to determine whether a given tweet has
+    discriminatory mood or does not.
+
+-   **2 - fake news** This data set contains data of American news: a
+    headline and an abstract of the article. Each piece of news is
+    classified as fake or credible. The task is to classify the news
+    from test.csv as credible or fake.
+
+-   **3 - sentiment** All the text messages contained in this data set
+    are labeled with three sentiments: positive, neutral or negative.
+    The task is to classify some text message as the one of positive
+    mood, negative or neutral.
+
+-   **4 - spam** This last data set contains SMS messages classified as
+    spam or non-spam (ham in the data set). The task is to determine
+    whether a given message is spam or non-spam.
+
+Each data set consists of two files: *train.csv* and *test.csv*. The
+first one is used to find the probabilities of the corresponding classes
+and the second one is used to test your classifier afterwards. Note that
+it is crucial to randomly split your data into training and testing
+parts to test the classifierʼs possibilities on the unseen data.
+
+```{r}
+# here goes a list of recommended libraries,
+# though you may install other ones if they are needed
+library(tidytext)
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+## Outline of the work
+
+1.  **Data pre-processing** (includes removing punctuation marks and
+    stop words, representing each message as a bag-of-words)
+2.  **Data visualization** (it's time to plot your data!)
+3.  **Classifier implementation** (using the training set, calculate all
+    the conditional probabilities in formula (1))
+4.  **Measurements of effectiveness of your classifier** (use the
+    results from the previous step to predict classes for messages in
+    the testing set and measure the accuracy, precision and recall, F1
+    score metric etc)
+5.  **Conclusions**
+
+*!! do not forget to submit both the (compiled) Rmd source file and the
+.html output !!*
+
+## Data pre-processing
+
+-   Read the *.csv* data files.
+-   Сlear your data from punctuation or other unneeded symbols.
+-   Clear you data from stop words. You don't want words as is, and, or
+    etc. to affect your probabilities distributions, so it is a wise
+    decision to get rid of them. Find list of stop words in the cms
+    under the lab task.
+-   Represent each test message as its bag-of-words. Here:
+    <https://machinelearningmastery.com/gentle-introduction-bag-words-model/>
+    you can find general introduction to the bag-of-words model and
+    examples on to create it.
+-   It is highly recommended to get familiar with R dataframes, it would
+    make the work much easier to do.
+-   Useful links:
+    -   <https://steviep42.github.io/webscraping/book/bagofwords.html#tidytext> -
+        example of using *tidytext* to count frequencies of the words.
+    -   Basics of Text Mining in R:
+        <http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html>
+        . Note that it also includes an example on how to create a bag
+        of words from your text document.
+
+```{r}
+list.files(getwd())
+list.files("data/0-authors")
+```
+
+```{r}
+test_path <- "data/0-authors/test.csv"
+train_path <- "data/0-authors/train.csv"
+
+stop_words <- read_file("stop_words.txt")
+# https://stackoverflow.com/questions/27195912/why-does-strsplit-return-a-list
+splitted_stop_words <- strsplit(stop_words, split='\n')
+splitted_stop_words <- splitted_stop_words[[1]]
+```
+
+```{r}
+train <-  read.csv(file = train_path, stringsAsFactors = FALSE)
+test <-  read.csv(file = test_path, stringsAsFactors = FALSE)
+```
+
+```{r}
+# note the power functional features of R bring us! 
+tidy_text <- unnest_tokens(train, 'splitted', 'text', token="words") %>%
+             filter(!splitted %in% stop_words)
+
+tidy_text %>% count(splitted,sort=TRUE)
+```
+
+## Data visualization
+
+Each time you work with some data, you need to understand it before you
+start processing it. R has very powerful tools to make nice plots and
+visualization. Show what are the most common words for negative and
+positive examples as a histogram, word cloud etc. Be creative!
+
+## Classifier implementation
+
+```{r}
+naiveBayes <- setRefClass("naiveBayes",
+                          
+       # here it would be wise to have some vars to store intermediate result
+       # frequency dict etc. Though pay attention to bag of words! 
+       fields = list(),
+       methods = list(
+                    # prepare your training data as X - bag of words for each of your
+                    # messages and corresponding label for the message encoded as 0 or 1 
+                    # (binary classification task)
+                    fit = function(X, y)
+                    {
+                         # TODO
+                    },
+                    
+                    # return prediction for a single message 
+                    predict = function(message)
+                    {
+                         # TODO
+                    },
+                    
+                    # score you test set so to get the understanding how well you model
+                    # works.
+                    # look at f1 score or precision and recall
+                    # visualize them 
+                    # try how well your model generalizes to real world data! 
+                    score = function(X_test, y_test)
+                    {
+                         # TODO
+                    }
+))
+
+model = naiveBayes()
+model$fit()
+```
+
+## Measure effectiveness of your classifier
+
+-   Note that accuracy is not always a good metric for your classifier.
+    Look at precision and recall curves, F1 score metric.
+
+    When evaluating the model, it's important to understand the
+    different types of classification results:
+
+    -   A ***true positive*** result is one where the model correctly
+        predicts the positive class.
+    -   A ***true negative*** result is one where the model correctly
+        predicts the negative class.
+    -   A ***false positive*** result is one where the model incorrectly
+        predicts the positive class when it is actually negative.
+    -   A ***false negative*** result is one where the model incorrectly
+        predicts the negative class when it is actually positive.
+
+    Precision measures the proportion of true positive predictions among
+    all positive predictions made by the model.
+
+    $$
+    Precision = \frac{TP}{TP+FP}
+    $$
+
+    Recall, on the other hand, measures the proportion of true positives
+    identified out of all actual positive cases.
+
+    $$
+    Recall = \frac{TP}{TP+FN}
+    $$
+
+    F1 score is the harmonic mean of both precision and recall.
+
+    $$
+    F1 = \frac{2\times Precision \times Recall}{Precision + Recall}
+    $$
+
+    **See [this
+    link](https://cohere.com/blog/classification-eval-metrics) to find
+    more information about metrics.**
+
+-   Visualize them.
+
+-   Show failure cases.
+
+## Conclusions
+
+Summarize your work by explaining in a few sentences the points listed
+below.
+
+-   Describe the method implemented in general. Show what are
+    mathematical foundations you are basing your solution on.
+-   List pros and cons of the method. This should include the
+    limitations of your method, all the assumption you make about the
+    nature of your data etc.
+-   Explain why accuracy is not a good choice for the base metrics for
+    classification tasks. Why F1 score is always preferable?

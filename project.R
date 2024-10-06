@@ -89,15 +89,16 @@ naiveBayes <- setRefClass("naiveBayes",
                               words <- unlist(strsplit(message, "\\s+"))
                               mult_lst <- list(spam = 1/.self$lens[["spam"]], ham = 1/.self$lens[["ham"]])
                               mult <- 1/.self$lens[["len"]]
-                              product_lst <- list(spam = .self$class_probabilities[["spam"]], ham = .self$class_probabilities[["ham"]])
+                              product_lst <- list(spam = 1, ham = 1)
                               
                               for (class in names(product_lst)) {
                                 for (word in words) {
                                   if (!is.null(.self$word_frequencies[[class]][[word]])) {
-                                    product_lst[[class]] <- product_lst[[class]] *
-                                      mult * mult_lst[[class]] * .self$word_frequencies[[class]][[word]]
+                                    product_lst[[class]] <- product_lst[[class]] * .self$word_frequencies[[class]][[word]] *
+                                    .self$class_probabilities[[class]] / .self$word_frequencies[["all"]][[word]]
                                   } else {
-                                    product_lst[[class]] <- product_lst[[class]] * (1 / (length(.self$vocab) + 1))
+                                    product_lst[[class]] <- product_lst[[class]] * mult * .self$class_probabilities[[class]]/
+                                      mult_lst[[class]]
                                   }
                                 }
                               }

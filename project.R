@@ -197,6 +197,7 @@ main <- function() {
   results_df <- data.frame(True = y_true, Predicted = y_pred)
   print(results_df)
   
+  #visualize_top_words(top_words_result)
   visualize_classification_results(y_true, y_pred)
 }
 

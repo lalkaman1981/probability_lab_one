@@ -14,9 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Work breakdown
 
--   *Name1 Surname1*:
--   *Name2 Surname2*:
--   *Name3 Surname3*:
+-   *Name1 Surname1*: 
+-   *Name2 Surname2*: Iryna Kyrylova
+-   *Name3 Surname3*: 
 
 ## Introduction
 
@@ -156,17 +156,18 @@ splitted_stop_words <- splitted_stop_words[[1]]
 ```
 
 ```{r}
-train <-  read.csv(file = train_path, stringsAsFactors = FALSE)
-test <-  read.csv(file = test_path, stringsAsFactors = FALSE)
+#train <-  read.csv(file = train_path, stringsAsFactors = FALSE)
+#test <-  read.csv(file = test_path, stringsAsFactors = FALSE)
 ```
 
 ```{r}
 # note the power functional features of R bring us! 
-tidy_text <- unnest_tokens(train, 'splitted', 'text', token="words") %>%
-             filter(!splitted %in% stop_words)
+#tidy_text <- unnest_tokens(train, 'splitted', 'text', token="words") %>%
+             #filter(!splitted %in% stop_words)
 
-tidy_text %>% count(splitted,sort=TRUE)
+#tidy_text %>% count(splitted,sort=TRUE)
 ```
+
 
 ## Data visualization
 
@@ -175,43 +176,242 @@ start processing it. R has very powerful tools to make nice plots and
 visualization. Show what are the most common words for negative and
 positive examples as a histogram, word cloud etc. Be creative!
 
-## Classifier implementation
 
+## Processes text data from a CSV file to filter out unwanted words and categorize messages
+```{r}
+text_filtering <- function(file) {
+  
+  data <- read.csv(file, stringsAsFactors = FALSE)
+  rows <- nrow(data)
+  filtered_messages <- vector("character", length = rows)
+  bin_vec <- vector("numeric", length = rows)
+  
+  remove_words <- readLines("stop_words.txt")
+  
+  for (i in 1:rows) {
+    category <- data$Category[i]
+    message <- data$Message[i]
+    
+    line <- gsub("\\bspam\\b|\\bham\\b|[.,@$%&*!?:()#;]", "", message)
+    words <- strsplit(line, "\\s+")[[1]]
+    
+    filtered_words <- words[!tolower(words) %in% tolower(remove_words)]
+    
+    result_line <- paste(filtered_words, collapse = " ")
+    filtered_messages[i] <- result_line
+    
+    if (category == "ham") {
+      bin_vec[i] <- 1
+    } else {
+      bin_vec[i] <- 0
+    }
+  }
+    return(list(lines = filtered_messages, binary_vec = bin_vec))
+}
+
+```
+
+
+## Identifies and extracts the most frequently used words from filtered text data, categorized by message type (ham or spam)
+```{r}
+top_words <- function(filtered_text) {
+  data <- data.frame(
+    Message = unlist(filtered_text$lines),
+    Category = ifelse(filtered_text$binary_vec == 1, "ham", "spam"),
+    stringsAsFactors = FALSE
+  )
+  
+  data_words <- data %>%
+    unnest_tokens(word, Message) %>%
+    anti_join(data.frame(word = readLines("stop_words.txt"), stringsAsFactors = FALSE), by = "word")
+  
+  word_counts <- data_words %>%
+    count(Category, word, sort = TRUE) %>%
+    ungroup()
+  
+  top_words <- word_counts %>%
+    group_by(Category) %>%
+    top_n(10, n) %>%
+    arrange(Category, desc(n))
+  
+  return(top_words)
+}
+```
+
+
+## Creates a bar plot to visualize the top words in both spam and ham categories.
+```{r}
+visualize_top_words <- function(top_words_data) {
+  ggplot(top_words_data, aes(x = reorder(word, n), y = n, fill = Category)) +
+    geom_bar(stat = "identity", position = position_dodge()) +
+    coord_flip() + 
+    labs(title = "Top 20 Words in Spam and Ham",
+         x = "Words",
+         y = "Frequency",
+         fill = "Category") +
+    theme_minimal() +
+    scale_fill_manual(values = c("spam" = "lightblue", "ham" = "pink"))
+
+}
+```
+
+```{r}
+filtered_text <- text_filtering("./4-spam/train.csv")
+top_words_result <- top_words(filtered_text)
+visualize_top_words(top_words_result)
+```
+
+
+## Classifier implementation
 ```{r}
 naiveBayes <- setRefClass("naiveBayes",
                           
-       # here it would be wise to have some vars to store intermediate result
-       # frequency dict etc. Though pay attention to bag of words! 
-       fields = list(),
-       methods = list(
-                    # prepare your training data as X - bag of words for each of your
-                    # messages and corresponding label for the message encoded as 0 or 1 
-                    # (binary classification task)
-                    fit = function(X, y)
-                    {
-                         # TODO
-                    },
-                    
-                    # return prediction for a single message 
-                    predict = function(message)
-                    {
-                         # TODO
-                    },
-                    
-                    # score you test set so to get the understanding how well you model
-                    # works.
-                    # look at f1 score or precision and recall
-                    # visualize them 
-                    # try how well your model generalizes to real world data! 
-                    score = function(X_test, y_test)
-                    {
-                         # TODO
-                    }
-))
+                          fields = list(
+                            class_probabilities = "list",
+                            word_frequencies = "list",
+                            vocab = "character",
+                            lens = "list"
+                          ),
+                          
+                          methods = list(
+                            
+                            initialize = function() {
+                              class_probabilities <<- list(ham = 0, spam = 0)
+                              word_frequencies <<- list(ham = list(), spam = list(), all = list())
+                              vocab <<- character()
+                              lens <<- list(len = 0, spam = 0, ham = 0)
+                            },
+                            
+                            fit = function(X, y) {
+                              .self$lens[["len"]] <- length(y) + .self$lens[["len"]]
+                              len <- .self$lens[["len"]]
+                              multiplayer <- 1 / len
+                              
+                              classes <- list(ham = 1, spam = 0)
+                              
+                              for (class in names(classes)) {
+                                val <- classes[[class]]
+                                class_count <- sum(y == val)
+                                .self$lens[[class]] <- class_count + .self$lens[[class]]
+                                
+                                .self$class_probabilities[[class]] <- (class_count + .self$class_probabilities[[class]]) / len
+                                
+                                class_messages <- X[y == val]
+                                
+                                for (message in class_messages) {
+                                  words <- unlist(strsplit(message, "\\s+"))
+                                  for (word in words) {
+                                    if (!(word %in% .self$vocab)) {
+                                      .self$vocab <- c(.self$vocab, word)
+                                    }
+                                    if (!is.null(.self$word_frequencies[[class]][[word]])) {
+                                      .self$word_frequencies[[class]][[word]] <- .self$word_frequencies[[class]][[word]] + multiplayer
+                                      .self$word_frequencies[["all"]][[word]] <- .self$word_frequencies[["all"]][[word]] + multiplayer
+                                    } else {
+                                      .self$word_frequencies[[class]][[word]] <- multiplayer
+                                      .self$word_frequencies[["all"]][[word]] <- multiplayer
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            
+                            predict = function(message) {
+                              words <- unlist(strsplit(message, "\\s+"))
+                              product_lst <- list(spam = .self$class_probabilities[["spam"]], 
+                                                  ham = .self$class_probabilities[["ham"]])
+                              
+                              for (class in names(product_lst)) {
+                                for (word in words) {
+                                  if (!is.null(.self$word_frequencies[[class]][[word]])) {
+                                    product_lst[[class]] <- product_lst[[class]] * .self$word_frequencies[[class]][[word]]
+                                  } else {
+                                    product_lst[[class]] <- product_lst[[class]] * (1 / (.self$lens[[class]] + 1))
+                                  }
+                                }
+                              }
+                              
+                              if (product_lst$spam > product_lst$ham) {
+                                return(0)  # spam
+                              }
+                              return(1)  # ham
+                            },
+                            
+                            score = function(X_test, y_test) {
+                              test_number <- length(y_test)
+                              counter_all <- 0
+                              counter_negative <- 0
+                              counter_positive <- 0
+                              for (test in 1:test_number) {
+                                result <- .self$predict(X_test[test])
+                                if (result == y_test[test]) {
+                                  counter_all <- counter_all + 1
+                                }
+                                if ((result == 0) & (y_test[test] == 0)) {
+                                  counter_negative <- counter_negative + 1
+                                }
+                                if ((result == 1) & (y_test[test] == 1)) {
+                                  counter_positive <- counter_positive + 1
+                                }
+                              }
+                              return(list(
+                                accuracy = counter_all / test_number,
+                                negative_accuracy = counter_negative / sum(y_test == 0),
+                                positive_accuracy = counter_positive / sum(y_test == 1)
+                              ))
+                            }
+                          )
+)
 
-model = naiveBayes()
-model$fit()
 ```
+
+
+## Visualize the results of a classifier
+```{r}
+visualize_classification_results <- function(y_true, y_pred) {
+  true_positive <- sum((y_pred == 1) & (y_true == 1))
+  false_positive <- sum((y_pred == 1) & (y_true == 0))
+  false_negative <- sum((y_pred == 0) & (y_true == 1)) 
+  true_negative <- sum((y_pred == 0) & (y_true == 0))
+  all <- sum(y_true == y_pred)
+  
+  
+  results <- data.frame(
+    Result = c("True Positive", "False Positive", "False Negative", "True Negative", "All"),
+    Count = c(true_positive, false_positive, false_negative, true_negative, all)
+  )
+  
+  ggplot(results, aes(x = Result, y = Count, fill = Result)) +
+    geom_bar(stat = "identity") +
+    labs(title = "Histogram of Classification Results", x = "Result", y = "Count") +
+    theme_minimal() +
+    scale_fill_manual(values = c("True Positive" = "blue",
+                                 "False Positive" = "pink",
+                                 "False Negative" = "orange",
+                                 "True Negative" = "green",
+                                 "All" = "purple"))
+}
+```
+
+## Output of accuracy(effectiveness of your classifier)
+```{r}
+model = naiveBayes()
+
+filtered_text <- text_filtering("./4-spam/train.csv")
+model$fit(filtered_text$lines, filtered_text$binary_vec)
+filtered_text1 <- text_filtering("./4-spam/test.csv")
+  
+res <- model$score(filtered_text1$lines, filtered_text1$binary_vec)
+print(res)
+```
+
+
+```{r}
+y_true <- filtered_text1$binary_vec
+y_pred <- sapply(filtered_text1$lines, model$predict)
+visualize_classification_results(y_true, y_pred)
+```
+
 
 ## Measure effectiveness of your classifier
 
@@ -257,6 +457,44 @@ model$fit()
 -   Visualize them.
 
 -   Show failure cases.
+
+
+```{r}
+calculate_metrics <- function(y_true, y_pred) {
+  true_positive <- sum((y_pred == 1) & (y_true == 1))
+  false_positive <- sum((y_pred == 1) & (y_true == 0))
+  false_negative <- sum((y_pred == 0) & (y_true == 1)) 
+  true_negative <- sum((y_pred == 0) & (y_true == 0))
+  
+  precision <- true_positive / (true_positive + false_positive)
+  recall <- true_positive / (true_positive + false_negative)
+  f1_score <- (2 * precision * recall) / (precision + recall)
+  
+  return(list(precision = precision, recall = recall, f1_score = f1_score))
+}
+```
+
+
+```{r}
+
+metrics <- calculate_metrics(y_true, y_pred)
+metrics_df <- data.frame(
+  Metric = c("Precision", "Recall", "F1 Score"),
+  Value = c(metrics$precision, metrics$recall, metrics$f1_score)
+)
+
+```
+
+```{r}
+ggplot(metrics_df, aes(x = Metric, y = Value, fill = Metric)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Model Performance Metrics",
+       x = "Metric",
+       y = "Score") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Precision" = "blue", "Recall" = "pink", "F1 Score" = "purple"))
+```
+
 
 ## Conclusions
 

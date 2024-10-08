@@ -14,9 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Work breakdown
 
--   *Name1 Surname1*: 
--   *Name2 Surname2*: Iryna Kyrylova
--   *Name3 Surname3*: 
+-   Shtohryn Oleh: functions fit and predict;
+-   Iryna Kyrylova: graphics and score;
+-   Maria Tsymbal: graphics and text_filtering;
 
 ## Introduction
 

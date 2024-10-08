@@ -137,12 +137,13 @@ naiveBayes <- setRefClass("naiveBayes",
 visualize_classification_results <- function(y_true, y_pred) {
   true_positive <- sum((y_pred == 1) & (y_true == 1))
   false_positive <- sum((y_pred == 1) & (y_true == 0))
-  false_negative <- sum((y_pred == 0) & (y_true == 1))  # Spam classified as ham
+  false_negative <- sum((y_pred == 0) & (y_true == 1)) 
   true_negative <- sum((y_pred == 0) & (y_true == 0))
+  neatral <- sum(y_true == y_pred)
   
   results <- data.frame(
-    Result = c("True Positive", "False Positive", "False Negative", "True Negative"),
-    Count = c(true_positive, false_positive, false_negative, true_negative)
+    Result = c("True Positive", "False Positive", "False Negative", "True Negative", "Neatral"),
+    Count = c(true_positive, false_positive, false_negative, true_negative, neatral)
   )
   
   ggplot(results, aes(x = Result, y = Count, fill = Result)) +
@@ -150,9 +151,10 @@ visualize_classification_results <- function(y_true, y_pred) {
     labs(title = "Histogram of Classification Results", x = "Result Type", y = "Count") +
     theme_minimal() +
     scale_fill_manual(values = c("True Positive" = "blue",
-                                 "False Positive" = "red",
+                                 "False Positive" = "pink",
                                  "False Negative" = "orange",
-                                 "True Negative" = "green"))
+                                 "True Negative" = "green",
+                                 "Neatral" = "purple"))
 }
 
 top_words <- function(filtered_text) {
@@ -187,7 +189,7 @@ visualize_top_words <- function(top_words_data) {
          y = "Frequency",
          fill = "Category") +
     theme_minimal() +
-    scale_fill_manual(values = c("spam" = "red", "ham" = "green"))
+    scale_fill_manual(values = c("spam" = "lightblue", "ham" = "pink"))
 
 }
 
@@ -199,7 +201,7 @@ main <- function() {
   
   filtered_text1 <- text_filtering("./4-spam/test.csv")
   
-  res <- model$score(filtered_text1$lines, filtered_text$binary_vec)
+  res <- model$score(filtered_text1$lines, filtered_text1$binary_vec)
   print(res)
   
   y_true <- filtered_text1$binary_vec
@@ -210,8 +212,8 @@ main <- function() {
   #results_df <- data.frame(True = y_true, Predicted = y_pred)
   #print(results_df)
   
-  #visualize_top_words(top_words_result)
-  visualize_classification_results(y_true, y_pred)
+  visualize_top_words(top_words_result)
+  #visualize_classification_results(y_true, y_pred)
 }
 
 main()

@@ -261,6 +261,24 @@ top_words_result <- top_words(filtered_text)
 visualize_top_words(top_words_result)
 ```
 
+We made a small mistake and (instead of giving a vector of bag of words we give a vector of messages). We were told that we may not change the whole code, so we just add an example of how it could work
+
+```{r}
+mes <- "Guess who's back? Guess who's back? Guess who's back? Guess who's back? Guess who's back? Guess who's back?"
+
+bag_of_words <- list()
+
+for (word in mes) {
+  if (!is.null(bag_of_words[[word]])) {
+    bag_of_words[[word]] <- bag_of_words[[word]] + 1
+  } else {
+    bag_of_words[[word]] <- 1
+  }
+}
+
+```
+
+But we used bag of words in our program (it would be really hard if we did not use it)
 
 ## Classifier implementation
 ```{r}
@@ -269,7 +287,6 @@ naiveBayes <- setRefClass("naiveBayes",
                           fields = list(
                             class_probabilities = "list",
                             word_frequencies = "list",
-                            vocab = "character",
                             lens = "list"
                           ),
                           
@@ -278,7 +295,6 @@ naiveBayes <- setRefClass("naiveBayes",
                             initialize = function() {
                               class_probabilities <<- list(ham = 0, spam = 0)
                               word_frequencies <<- list(ham = list(), spam = list(), all = list())
-                              vocab <<- character()
                               lens <<- list(len = 0, spam = 0, ham = 0)
                             },
                             
@@ -301,9 +317,6 @@ naiveBayes <- setRefClass("naiveBayes",
                                 for (message in class_messages) {
                                   words <- unlist(strsplit(message, "\\s+"))
                                   for (word in words) {
-                                    if (!(word %in% .self$vocab)) {
-                                      .self$vocab <- c(.self$vocab, word)
-                                    }
                                     if (!is.null(.self$word_frequencies[[class]][[word]])) {
                                       .self$word_frequencies[[class]][[word]] <- .self$word_frequencies[[class]][[word]] + multiplayer
                                       .self$word_frequencies[["all"]][[word]] <- .self$word_frequencies[["all"]][[word]] + multiplayer

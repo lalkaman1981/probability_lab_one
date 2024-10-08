@@ -110,16 +110,29 @@ naiveBayes <- setRefClass("naiveBayes",
                             
                             score = function(X_test, y_test) {
                               test_number <- length(y_test)
-                              counter <- 0
+                              counter_all <- 0
+                              counter_negative <- 0
+                              counter_positive <- 0
                               for (test in 1:test_number) {
                                 result <- .self$predict(X_test[test])
                                 if (result == y_test[test]) {
-                                  counter <- counter + 1
+                                  counter_all <- counter_all + 1
+                                }
+                                if ((result == 0) & (y_test[test] == 0)) {
+                                  counter_negative <- counter_negative + 1
+                                }
+                                if ((result == 1) & (y_test[test] == 1)) {
+                                  counter_positive <- counter_positive + 1
                                 }
                               }
-                              return(counter / test_number)
+                              return(list(
+                                accuracy = counter_all / test_number,
+                                negative_accuracy = counter_negative / sum(y_test == 0),
+                                positive_accuracy = counter_positive / sum(y_test == 1)
+                              ))
                             }
-                          ))
+                          )
+)
 
 visualize_classification_results <- function(y_true, y_pred) {
   true_positive <- sum((y_pred == 1) & (y_true == 1))
@@ -194,8 +207,8 @@ main <- function() {
   
   top_words_result <- top_words(filtered_text)
   
-  results_df <- data.frame(True = y_true, Predicted = y_pred)
-  print(results_df)
+  #results_df <- data.frame(True = y_true, Predicted = y_pred)
+  #print(results_df)
   
   #visualize_top_words(top_words_result)
   visualize_classification_results(y_true, y_pred)

@@ -511,13 +511,5 @@ ggplot(metrics_df, aes(x = Metric, y = Value, fill = Metric)) +
 
 ## Conclusions
 
-Summarize your work by explaining in a few sentences the points listed
-below.
-
--   Describe the method implemented in general. Show what are
-    mathematical foundations you are basing your solution on.
--   List pros and cons of the method. This should include the
-    limitations of your method, all the assumption you make about the
-    nature of your data etc.
--   Explain why accuracy is not a good choice for the base metrics for
-    classification tasks. Why F1 score is always preferable?
+The Naive Bayes classifier is a probabilistic algorithm based on Bayes' theorem that assumes independence of features to calculate class probabilities. The method is simple, efficient, and fast to learn, but has limitations due to the assumption of feature independence and the problem of zero probabilities. Using precision as a metric can be misleading in cases of skewed class distributions. Instead, the F1 metric, which combines accuracy and completeness, provides a better assessment of model performance in such scenarios. Therefore, the F1 metric is a more reliable metric for classification tasks.
+We used Bayes formula, f1, recall, precision (they were mentioned before)
